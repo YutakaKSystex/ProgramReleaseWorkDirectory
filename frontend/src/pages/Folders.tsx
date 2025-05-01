@@ -5,7 +5,6 @@ import { Input } from '../components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
 import { FolderIcon, PlusIcon } from 'lucide-react';
-import { useNavigate } from 'react-router';
 
 interface Folder {
   id: string;
@@ -21,7 +20,6 @@ export const Folders: React.FC = () => {
   const [newFolderName, setNewFolderName] = useState('');
   const [currentParentId, setCurrentParentId] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const navigate = useNavigate();
 
   useEffect(() => {
     fetchFolders();
@@ -31,7 +29,7 @@ export const Folders: React.FC = () => {
     try {
       setLoading(true);
       const data = await getFolders(currentParentId || undefined);
-      setFolders(data);
+      setFolders(data as Folder[]);
     } catch (error) {
       console.error('Error fetching folders:', error);
     } finally {

@@ -47,7 +47,7 @@ export const ApprovalRoutes: React.FC = () => {
     try {
       setLoading(true);
       const data = await getApprovalRoutes();
-      setRoutes(data);
+      setRoutes(data as ApprovalRoute[]);
     } catch (error) {
       console.error('Error fetching approval routes:', error);
     } finally {
@@ -58,7 +58,7 @@ export const ApprovalRoutes: React.FC = () => {
   const fetchUsers = async () => {
     try {
       const data = await getUsers();
-      setUsers(data);
+      setUsers(data as User[]);
     } catch (error) {
       console.error('Error fetching users:', error);
     }

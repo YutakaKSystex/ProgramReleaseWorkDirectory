@@ -16,10 +16,10 @@ export const Dashboard: React.FC = () => {
     const fetchData = async () => {
       try {
         const approvals = await getApplicationsForApproval();
-        setPendingApprovals(approvals.length);
+        setPendingApprovals((approvals as any[]).length);
         
         const applications = await getApplications();
-        setMyApplications(applications.length);
+        setMyApplications((applications as any[]).length);
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
       }

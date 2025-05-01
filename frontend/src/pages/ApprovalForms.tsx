@@ -51,7 +51,7 @@ export const ApprovalForms: React.FC = () => {
     try {
       setLoading(true);
       const data = await getApprovalForms();
-      setForms(data);
+      setForms(data as ApprovalForm[]);
     } catch (error) {
       console.error('Error fetching approval forms:', error);
     } finally {
@@ -62,9 +62,10 @@ export const ApprovalForms: React.FC = () => {
   const fetchFolders = async () => {
     try {
       const data = await getFolders();
-      setFolders(data);
-      if (data.length > 0 && !targetFolderId) {
-        setTargetFolderId(data[0].id);
+      const folderData = data as Folder[];
+      setFolders(folderData);
+      if (folderData.length > 0 && !targetFolderId) {
+        setTargetFolderId(folderData[0].id);
       }
     } catch (error) {
       console.error('Error fetching folders:', error);
