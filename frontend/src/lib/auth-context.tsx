@@ -1,21 +1,30 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { login as apiLogin, register as apiRegister, getCurrentUser } from './api';
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
+const supabaseKey = import.meta.env.VITE_SUPABASE_KEY || '';
+
+if (!supabaseUrl || !supabaseKey) {
+  console.error('Supabase URL and key must be provided in .env file');
+}
+
+export const supabase = createClient(supabaseUrl, supabaseKey);
 
 interface User {
   id: string;
-  username: string;
+  username?: string;
   email: string;
   full_name?: string;
-  role: string;
+  role?: string;
 }
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
   error: string | null;
-  login: (username: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<void>;
   register: (userData: { username: string; email: string; password: string; full_name?: string }) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
   clearError: () => void;
 }
 
@@ -27,35 +36,65 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      fetchCurrentUser();
-    } else {
-      setLoading(false);
-    }
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (session) {
+          const { data, error } = await supabase
+            .from('users')
+            .select('*')
+            .eq('id', session.user.id)
+            .single();
+          
+          if (data) {
+            setUser({
+              id: session.user.id,
+              email: session.user.email || '',
+              username: data.username,
+              full_name: data.full_name,
+              role: data.role
+            });
+          } else {
+            setUser({
+              id: session.user.id,
+              email: session.user.email || '',
+              full_name: session.user.user_metadata?.full_name,
+              role: session.user.user_metadata?.role || 'user'
+            });
+          }
+        } else {
+          setUser(null);
+        }
+        setLoading(false);
+      }
+    );
+
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        setLoading(false);
+      }
+    };
+    
+    checkSession();
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
-  const fetchCurrentUser = async () => {
-    try {
-      const userData = await getCurrentUser();
-      setUser(userData as User);
-    } catch (err) {
-      console.error('Failed to fetch current user:', err);
-      localStorage.removeItem('token');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const login = async (username: string, password: string) => {
+  const login = async (email: string, password: string) => {
     try {
       setLoading(true);
       setError(null);
-      const data = await apiLogin(username, password);
-      localStorage.setItem('token', (data as { access_token: string }).access_token);
-      await fetchCurrentUser();
+      
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+      
+      if (error) throw error;
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Login failed');
+      setError(err.message || 'Login failed');
       setLoading(false);
       throw err;
     }
@@ -65,18 +104,42 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       setLoading(true);
       setError(null);
-      await apiRegister(userData);
-      await login(userData.username, userData.password);
+      
+      const { data, error } = await supabase.auth.signUp({
+        email: userData.email,
+        password: userData.password,
+        options: {
+          data: {
+            full_name: userData.full_name,
+            role: 'user'
+          }
+        }
+      });
+      
+      if (error) throw error;
+      
+      if (data.user) {
+        await supabase.from('users').insert({
+          id: data.user.id,
+          email: userData.email,
+          username: userData.username,
+          full_name: userData.full_name,
+          role: 'user'
+        });
+      }
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Registration failed');
+      setError(err.message || 'Registration failed');
       setLoading(false);
       throw err;
     }
   };
 
-  const logout = () => {
-    localStorage.removeItem('token');
-    setUser(null);
+  const logout = async () => {
+    try {
+      await supabase.auth.signOut();
+    } catch (err: any) {
+      console.error('Logout error:', err);
+    }
   };
 
   const clearError = () => {
