@@ -1,6 +1,5 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
-import psycopg
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, FileResponse
 import os
@@ -19,13 +18,17 @@ app.add_middleware(
     allow_headers=["*"],  # Allows all headers
 )
 
-app.include_router(auth.router)
-app.include_router(users.router)
-app.include_router(folders.router)
-app.include_router(documents.router)
-app.include_router(approval_forms.router)
-app.include_router(approval_routes.router)
-app.include_router(applications.router)
+api_router = APIRouter(prefix="/api")
+
+api_router.include_router(auth.router)
+api_router.include_router(users.router)
+api_router.include_router(folders.router)
+api_router.include_router(documents.router)
+api_router.include_router(approval_forms.router)
+api_router.include_router(approval_routes.router)
+api_router.include_router(applications.router)
+
+app.include_router(api_router)
 
 os.makedirs("uploads", exist_ok=True)
 os.makedirs("frontend", exist_ok=True)
